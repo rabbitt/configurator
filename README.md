@@ -1,7 +1,7 @@
 # Configurator
 
 ## Installation
-1. Add `gem 'configurator', :git => 'https://github.com/rabbitt/configurator'` to your Gemfile
+1. Add `gem 'configurator', :git => 'https://github.com/rabbitt/configurator.git'` to your Gemfile
 2. Run `bundle install`
 
 ## Usage
