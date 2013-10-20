@@ -1,4 +1,3 @@
-require 'configurator/core_ext'
 require 'configurator/errors'
 require 'configurator/bindings'
 
