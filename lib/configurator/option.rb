@@ -33,12 +33,20 @@ module Configurator
       return nil if @value.nil? && @default == UNDEFINED_OPTION
 
       value = (@value || @default)
-      value = case value.arity
-        when 0 then value.call
-        when 1 then value.call(parent.root)
-        when -1, 2 then value.call(parent.root, parent)
-        else raise OptionInvalidCallableDefault, "#{path_name}: callable default must accept -1..2 arguments"
-      end if value.respond_to? :call
+
+      begin
+        value = case value.arity
+          when 0 then value.call
+          when 1 then value.call(parent.root)
+          when -1, 2 then value.call(parent.root, parent)
+          else raise OptionInvalidCallableDefault, "#{path_name}: callable default must accept -1..2 arguments"
+        end if value.respond_to? :call
+      rescue NoMethodError => e
+        method = e.message.match(/undefined method .([^']+)'.+/)[1]
+        raise OptionInvalidCallableDefault, "#{path_name}: bad method/option name #{method.inspect} in callable default."
+      rescue StandardError => e
+        raise OptionInvalidCallableDefault, "#{path_name}: error executing callable default: #{e.class.name}: #{e.message}"
+      end
 
       cast_value(value)
     end
@@ -132,10 +140,18 @@ module Configurator
       validations.all? { |validation| validation.call(_value) }
     end
 
-    def validate_type(_value)
-      case type
+    def validate_type(_value, validate_type = nil)
+      validate_type ||= type
+
+      case validate_type
         when Array then
-          type.empty? ? _value.is_a?(Array) : [*_value].flatten.all? { |v| v.is_a? type.first }
+          if validate_type.empty?
+            _value.is_a?(Array)
+          else
+            [*_value].flatten.all? { |v|
+              validate_type(v, validate_type.first)
+            }
+          end
         when :any; true
         when :array; _value.is_a?(Array)
         when :boolean; _value.is_a?(FalseClass) || _value.is_a?(TrueClass)
@@ -149,7 +165,7 @@ module Configurator
       end
     end
 
-    def cast_value(_value, cast_type=nil)
+    def cast_value(_value, cast_type = nil)
       return _value unless cast_type ||= @cast
 
       case cast_type
