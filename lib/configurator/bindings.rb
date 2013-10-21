@@ -106,6 +106,14 @@ module Configurator
         @loader ||= Configurator::Loader.new(config_path, Kernel.binding)
       end
       private :loader
+
+      def to_h
+        @config.to_h
+      end
+
+      def to_yaml
+        @config.to_yaml
+      end
     end
   end
 end
