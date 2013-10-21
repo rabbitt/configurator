@@ -8,6 +8,10 @@ module Configurator
       base.send :include, Singleton
       base.send :include, InstanceMethods
       base.extend self
+
+      # allow for reloading of target class
+      base.class_eval { remove_instance_variable(:@config) if defined? @config }
+
       base.class_eval(<<-EOF, __FILE__, __LINE__ + 1)
         def self.method_missing(method, *args, &block)
           return super unless instance.respond_to? method
