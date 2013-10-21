@@ -140,16 +140,16 @@ module Configurator
       validations.all? { |validation| validation.call(_value) }
     end
 
-    def validate_type(_value, validate_type = nil)
-      validate_type ||= type
+    def validate_type(_value, validation_type = nil)
+      validation_type ||= type
 
-      case validate_type
-        when Array then
-          if validate_type.empty?
+      case validation_type
+        when Array;
+          if validation_type.empty?
             _value.is_a?(Array)
           else
             [*_value].flatten.all? { |v|
-              validate_type(v, validate_type.first)
+              validate_type(v, validation_type.first)
             }
           end
         when :any; true
@@ -161,7 +161,9 @@ module Configurator
         when :string; _value.is_a? String
         when :symbol; _value.is_a? Symbol
         when :uri; !!(URI.parse(_value.to_s) rescue false)
-        else warn "unable to validate - no handler for type: #{type.inspect}"
+        else
+          warn "unable to validate - no handler for type: #{type.inspect}"
+          true # assume valid
       end
     end
 
