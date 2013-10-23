@@ -214,8 +214,8 @@ module Configurator
       @option = option
 
       case @option.value
-        when String then define_method(:to_str) { to_s }
-        when Numeric then define_method(:to_int) { to_i }
+        when String then self.class.send(:define_method, :to_str) { self.to_s }
+        when Numeric then self.class.send(:define_method, :to_int) { self.to_i }
       end
 
       super(option.value)
