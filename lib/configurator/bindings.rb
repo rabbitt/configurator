@@ -56,7 +56,6 @@ module Configurator
 
     module InstanceMethods
       attr_reader :config_path
-      private :config_path
 
       def config
         @config ||= self.class.config
