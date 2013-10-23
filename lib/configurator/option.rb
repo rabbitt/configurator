@@ -212,6 +212,12 @@ module Configurator
   class OptionValueDelegator < SimpleDelegator
     def initialize(option)
       @option = option
+
+      case @option.value
+        when String then define_method(:to_str) { to_s }
+        when Numeric then define_method(:to_int) { to_i }
+      end
+
       super(option.value)
     end
 
