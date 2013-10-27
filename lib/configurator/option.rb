@@ -50,11 +50,11 @@ module Configurator
 
     def with_loop_guard(&block)
       begin
-        raise SystemStackError if @guarding
+        raise OptionLoopError if @guarding
         @guarding = true
         yield
-      rescue SystemStackError
-        raise "Loop detected in request to #{path_name}"
+      rescue OptionLoopError => error
+        raise error.tap { |e| e.stack << path_name }
       ensure
         @guarding = false
       end
@@ -74,6 +74,8 @@ module Configurator
             else raise OptionInvalidCallableDefault, "#{path_name}: callable default must accept -1..2 arguments"
           end if value.respond_to? :call
         end
+      rescue OptionLoopError
+        raise # bubble up
       rescue NoMethodError => e
         method = e.message.match(/undefined method .([^']+)'.+/)[1]
         raise OptionInvalidCallableDefault, "#{path_name}: bad method/option name #{method.inspect} in callable default."

@@ -27,4 +27,17 @@ module Configurator
   class OptionInvalidCallableDefault < Error; end
   class RenameFailed < Error; end
   class ConfigurationInvalid < Error; end
+
+  class OptionLoopError < SystemStackError
+    attr_accessor :stack
+
+    def initialize(*args)
+      @stack = []
+      super
+    end
+
+    def to_s
+      "Loop detected in #{stack.first}. Request Stack: #{stack.join(' -> ')}"
+    end
+  end
 end
