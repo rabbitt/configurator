@@ -102,8 +102,8 @@ module Configurator
     end
 
     def option(option_name, *args)
-      options     = args.last.is_a?(Hash) ? args.pop : {}
-      optiosn.merge!(:type => args.first || :string)
+      options = args.last.is_a?(Hash) ? args.pop : {}
+      options.merge!(:type => args.first || :string)
 
       option_name = option_name.to_sym
       deprecated  = options.delete(:deprecated)
