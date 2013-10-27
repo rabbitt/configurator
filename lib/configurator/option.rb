@@ -27,9 +27,10 @@ module Configurator
     UNDEFINED_OPTION = :__undefined__
 
     def initialize(name, parent, options={})
-      @name   = name.to_sym
-      @value  = nil
-      @parent = parent
+      @name     = name.to_sym
+      @value    = nil
+      @parent   = parent
+      @guarding = false
 
       @type        = (options.delete(:type) || :any).freeze
       @cast        = options.delete(:cast).freeze
@@ -47,18 +48,32 @@ module Configurator
       validate(v) ? @value = v : nil
     end
 
+    def with_loop_guard(&block)
+      begin
+        raise SystemStackError if @guarding
+        @guarding = true
+        yield
+      rescue SystemStackError
+        raise "Loop detected in request to #{path_name}"
+      ensure
+        @guarding = false
+      end
+    end
+
     def value
       return nil if @value.nil? && @default == UNDEFINED_OPTION
 
       value = (@value || @default)
 
       begin
-        value = case value.arity
-          when 0 then value.call
-          when 1 then value.call(parent.root)
-          when -1, 2 then value.call(parent.root, parent)
-          else raise OptionInvalidCallableDefault, "#{path_name}: callable default must accept -1..2 arguments"
-        end if value.respond_to? :call
+        with_loop_guard do
+          value = case value.arity
+            when 0 then value.call
+            when 1 then value.call(parent)
+            when -1, 2 then value.call(parent, parent.root)
+            else raise OptionInvalidCallableDefault, "#{path_name}: callable default must accept -1..2 arguments"
+          end if value.respond_to? :call
+        end
       rescue NoMethodError => e
         method = e.message.match(/undefined method .([^']+)'.+/)[1]
         raise OptionInvalidCallableDefault, "#{path_name}: bad method/option name #{method.inspect} in callable default."
@@ -214,8 +229,10 @@ module Configurator
       @option = option
 
       case @option.value
-        when String then self.class.send(:define_method, :to_str) { self.to_s }
-        when Numeric then self.class.send(:define_method, :to_int) { self.to_i }
+        when String then
+          self.class.send(:define_method, :to_str) { self.to_s }
+        when Numeric then
+          self.class.send(:define_method, :to_int) { self.to_i }
       end
 
       super(option.value)
