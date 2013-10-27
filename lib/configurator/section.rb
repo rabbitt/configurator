@@ -101,12 +101,15 @@ module Configurator
       }
     end
 
-    def option(option_name, type, options = {})
+    def option(option_name, *args)
+      options     = args.last.is_a?(Hash) ? args.pop : {}
+      optiosn.merge!(:type => args.first || :string)
+
       option_name = option_name.to_sym
       deprecated  = options.delete(:deprecated)
       renamed_to  = options.delete(:rename)
 
-      option = Option.new(option_name, self, options.merge(:type => type))
+      option = Option.new(option_name, self, options)
       option = deprecate(option, deprecated) if deprecated
       option = rename(option, renamed_to) if renamed_to
 
