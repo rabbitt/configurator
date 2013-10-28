@@ -28,6 +28,8 @@ module Configurator
       load options
     end
 
+    def type; :section; end
+
     def root
       parent.nil? ? self : parent.root
     end

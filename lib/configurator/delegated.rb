@@ -31,6 +31,20 @@ module Configurator
       super(option.value)
     end
 
+    def method_missing(method, *args, &block)
+      begin
+        super
+      rescue NoMethodError
+        begin
+          raise NoMethodError, "undefined method '#{method}' for #{@option.type} option #{path_name}."
+        rescue NoMethodError => e
+          # hack to remove trace information for this file
+          e.backtrace.collect!{ |line| line.include?(__FILE__) ? nil : line}.compact!
+          raise
+        end
+      end
+    end
+
     def valid?; @option.valid?; end
     def required?; @option.required?; end
     def optional?; @option.optional?; end

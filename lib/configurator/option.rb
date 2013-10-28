@@ -23,7 +23,6 @@ module Configurator
     attr_reader :name, :parent, :type, :default, :cast, :validations, :required
     private :validations, :required
 
-    VALID_TYPES = [ Array, :any, :array, :boolean, :float, :integer, :path, :string, :symbol, :uri ]
     UNDEFINED_OPTION = :__undefined__
 
     def initialize(name, parent, options={})
