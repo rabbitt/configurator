@@ -16,7 +16,7 @@ module Application
     configuration do
       section :general do
         option :domain, default: 'example.com'
-        option :email,  validate: -> { |value| value.include? '@' or raise ValidationError, "email missing @" }
+        option :email,  validate: ->(value) { value.include? '@' or raise ValidationError, "email missing @" }
       end
 
       section :ldap do
