@@ -6,7 +6,8 @@
 
 ## Usage
 
-### Define your applications Configuration
+### Creating a Configuration
+
 ```ruby
 module Application
   class Config
@@ -14,20 +15,20 @@ module Application
 
     configuration do
       section :general do
-        option :email, :string, :validate => lambda { |value| value.include? '@' or raise ValidationError, "email missing @" }
-        option :domain, :string, :default => 'example.com'
+        option :domain, default: 'example.com'
+        option :email,  validate: -> { |value| value.include? '@' or raise ValidationError, "email missing @" }
       end
 
       section :ldap do
-        option :host, :string, :required => true, :rename => :hostname
-        option :encryption, :symbol, :default => :none, :expect => [ :none, :start_tls, :simple_tls ]
-        option :base_dn, :string, :default => lambda { |root| "dc=%s,dc=%s" % root.general.domain.split('.')[-2..-1] }
-        option :user_base, :string :default => lambda { |root, current| "ou=people,%s" % current.base_dn }
+        option :host,       rename: :hostname
+        option :encryption, :symbol, default: :none, expect: [ :none, :start_tls, :simple_tls ]
+        option :base_dn,    default: -> { "dc=%s,dc=%s" % root.general.domain.split('.')[-2..-1] }
+        option :user_base,  default: -> { "ou=people,%s" % base_dn }
       end
 
-      section :misc, :deprecated => '10/31/2013' do
-        option :foo, :string, :renamed => 'root.general.bar', :default => 'baz'
-        option :foobaz, :uri, :deprecated => '10/29/2013'
+      section :misc, deprecated: '10/31/2013' do
+        option :foo,  default: 'baz', renamed: 'root.general.bar'
+        option :foobaz, :uri, deprecated: '10/29/2013'
       end
     end
   end
@@ -38,7 +39,16 @@ This creates a singleton Appliation::Config instance which you can use to access
 can load up a YAML file by calling the ```load(config_path, environment)``` method of your new ```Application::Config```
 object.
 
-### Accessing / Modifying options
+#### Sections
+##### Deprecations
+##### Renames
+#### Options
+##### Types
+##### Defaults
+##### Casting to another type
+##### Validations
+
+#### Accessing / Modifying options
 
 ```ruby
 config = Application::Config
@@ -74,3 +84,11 @@ config.misc.foo === config.general.bar # -> true
 Application::Config.load(File.expand_path('/path/to/config.yml'), :production)
 trap('HUP') { Application::Config.reload! }
 ```
+
+## Contributing
+
+1. Fork it
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Commit your changes (`git commit -am 'Add some feature'`)
+4. Push to the branch (`git push origin my-new-feature`)
+5. Create new Pull Request
