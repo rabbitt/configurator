@@ -19,7 +19,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 require 'singleton'
 
 module Configurator
-  module Bindings
+  module DSL
     extend self
 
     def self.included(base)

@@ -60,10 +60,14 @@ module Configurator
       @options.each &block
     end
 
+    def inject(what, &block)
+      @options.inject(what, &block)
+    end
+
     def to_h
-      @options.inject({}) { |h,(k,v)|
-        h[k] = v.is_a?(Section) ? v.to_h : v.value
-        h
+      inject({}) { |hash,(key,value)|
+        hash[key] = value.to_h rescue value.value
+        hash
       }
     end
 
@@ -165,14 +169,15 @@ module Configurator
         raise OptionExists, "Option #{path_name}.#{option_name} already exists"
       end
 
-      @options[option_name] = object.tap {
+
+      @options[option_name] = OptionValue.new(object).tap {
         self.class.class_eval(<<-EOF, __FILE__, __LINE__ + 1)
           def #{option_name}()
-            OptionValueDelegator.new(@options[#{option_name.inspect}])
+            @options[#{option_name.inspect}]
           end
 
           def #{option_name}=(_value)
-            @options[#{option_name.inspect}].value = _value
+            #{option_name}.value = _value
           end
         EOF
       }

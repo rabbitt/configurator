@@ -17,6 +17,33 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 =end
 
 module Configurator
+  class OptionValue < SimpleDelegator
+    def initialize(option)
+      @option = option
+
+      case @option.value
+        when String then
+          self.class.send(:define_method, :to_str) { self.to_s } unless defined? :to_str
+        when Numeric then
+          self.class.send(:define_method, :to_int) { self.to_i } unless defined? :to_int
+      end
+
+      super(option.value)
+    end
+
+    def valid?; @option.valid?; end
+    def required?; @option.required?; end
+    def optional?; @option.optional?; end
+    def path_name; @option.path_name; end
+    def name; @option.name; end
+
+    def value; self; end
+    def value=(value)
+      @option.value = value
+      initialize(@option)
+    end
+  end
+
   class Delegated < SimpleDelegator
     attr_accessor :name, :parent
     private :name=, :parent=

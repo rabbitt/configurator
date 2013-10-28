@@ -32,8 +32,8 @@ module Configurator
       @parent   = parent
       @guarding = false
 
-      @type        = (options.delete(:type) || :any).freeze
-      @cast        = options.delete(:cast).freeze
+      @type        = (options.delete(:type) || :string).freeze
+      @caster      = (cast_type = options.delete(:cast)).nil? ? Cast::Director[@type] : Cast::Director[cast_type]
       @default     = (options.delete(:default) || UNDEFINED_OPTION).freeze
 
       @required    = determine_if_required?(options)
@@ -46,18 +46,6 @@ module Configurator
 
     def value=(v)
       validate(v) ? @value = v : nil
-    end
-
-    def with_loop_guard(&block)
-      begin
-        raise OptionLoopError if @guarding
-        @guarding = true
-        yield
-      rescue OptionLoopError => error
-        raise error.tap { |e| e.stack << path_name }
-      ensure
-        @guarding = false
-      end
     end
 
     def value
@@ -83,7 +71,7 @@ module Configurator
         raise OptionInvalidCallableDefault, "#{path_name}: error executing callable default: #{e.class.name}: #{e.message}"
       end
 
-      cast_value(value)
+      @caster.convert(value)
     end
 
     def include?(data)
@@ -170,7 +158,7 @@ module Configurator
     end
 
     def validate(_value)
-      _value = cast_value(_value || @value)
+      _value = @caster.convert(_value || @value)
       return true if type == :any || validations.empty?
       validations.all? { |validation| validation.call(_value) }
     end
@@ -202,48 +190,17 @@ module Configurator
       end
     end
 
-    def cast_value(_value, cast_type = nil)
-      return _value unless cast_type ||= @cast
-
-      case cast_type
-        when Array then
-          type.empty? ? [*_value].flatten : [*_value].flatten.collect{|v| cast_value(v, cast_type.first)}
-        when :array; [*_value].flatten
-        when :integer; _value.to_i
-        when :float; _value.to_f
-        when :string; _value.to_s
-        when :boolean;
-          case _value
-            when /(off|false|no|disabled?)/ then false
-            when /(on|true|enable|yes)/ then true
-            else !!_value
-          end
-        when :symbol; _value.to_s.to_sym
-        when :uri; URI(_value.to_s) rescue nil
-        when :path; Pathname.new(_value)
-        else cast_type.respond_to?(:call) ? cast_type.call(_value) : _value
+    def with_loop_guard(&block)
+      begin
+        raise OptionLoopError if @guarding
+        @guarding = true
+        yield
+      rescue OptionLoopError => error
+        raise error.tap { |e| e.stack << path_name }
+      ensure
+        @guarding = false
       end
     end
-  end
 
-  class OptionValueDelegator < SimpleDelegator
-    def initialize(option)
-      @option = option
-
-      case @option.value
-        when String then
-          self.class.send(:define_method, :to_str) { self.to_s }
-        when Numeric then
-          self.class.send(:define_method, :to_int) { self.to_i }
-      end
-
-      super(option.value)
-    end
-
-    def valid?; @option.valid?; end
-    def required?; @option.required?; end
-    def optional?; @option.optional?; end
-    def path_name; @option.path_name; end
-    def name; @option.name; end
   end
 end
