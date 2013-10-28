@@ -115,4 +115,6 @@ module Configurator
       end
     end
   end
+
+  Bindings = DSL
 end
