@@ -20,13 +20,18 @@ module Configurator
   class Error < StandardError; end
 
   class ValidationError < Error; end
-
-  class OptionExists < Error; end
-  class OptionInvalid < Error; end
-  class OptionInvalidArgument < Error; end
-  class OptionInvalidCallableDefault < Error; end
-  class RenameFailed < Error; end
   class ConfigurationInvalid < Error; end
+
+  class CastError < Error; end
+  class InvalidCastType < CastError; end
+  class CastFailure < CastError; end
+
+  class OptionError < Error; end
+  class OptionExists < OptionError; end
+  class OptionInvalid < OptionError; end
+  class OptionInvalidArgument < OptionError; end
+  class OptionInvalidCallableDefault < OptionError; end
+  class RenameFailed < OptionError; end
 
   class OptionLoopError < SystemStackError
     attr_accessor :stack
@@ -40,4 +45,5 @@ module Configurator
       "Loop detected in #{stack.first}. Request Stack: #{stack.join(' -> ')}"
     end
   end
+
 end

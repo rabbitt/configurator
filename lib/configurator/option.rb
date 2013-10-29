@@ -20,7 +20,7 @@ require 'pathname'
 
 module Configurator
   class Option
-    attr_reader :name, :parent, :type, :default, :cast, :validations, :required
+    attr_reader :name, :parent, :type, :default, :caster, :validations, :required
     private :validations, :required
 
     UNDEFINED_OPTION = :__undefined__
@@ -31,15 +31,39 @@ module Configurator
       @parent   = parent
       @guarding = false
 
-      @type        = (options.delete(:type) || :string).freeze
-      @caster      = (cast_type = options.delete(:cast)).nil? ? Cast::Director[@type] : Cast::Director[cast_type]
-      @default     = (options.delete(:default) || UNDEFINED_OPTION).freeze
+      @default = (options.delete(:default) || UNDEFINED_OPTION).freeze
+      @type    = (type = options.delete(:type)).nil? ? compute_type_from_default : type
+      @caster  = (cast_type = options.delete(:cast)).nil? ? Cast::Director[@type] : Cast::Director[cast_type]
 
       @required    = determine_if_required?(options)
       @validations = gather_validations(options)
 
       if options.count > 0
         warn "#{path_name}: encountered unknown options: #{options.inspect}"
+      end
+    end
+
+    def compute_type_from_default
+      if (type = base_type_to_sym(@default)) == :array
+        if @default.size > 0
+          type = [base_type_to_sym(@default.first)]
+        end
+      end
+      type
+    end
+
+    def base_type_to_sym(type)
+      case type
+        when UNDEFINED_OPTION then :any
+        when Bignum, Fixnum then :integer
+        when Float then :float
+        when Symbol then :symbol
+        when FalseClass, TrueClass, /(true|false|yes|no|enabled?|disabled?|on|off)/i then :boolean
+        when String then :string
+        when Pathname then :path
+        when URI then :uri
+        when Array then :array
+        else :any
       end
     end
 

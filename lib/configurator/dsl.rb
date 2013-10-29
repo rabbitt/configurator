@@ -101,6 +101,10 @@ module Configurator
         }
       end
 
+      def load_from_hash(hash)
+        config.load hash
+      end
+
       def loader
         @loader ||= Configurator::Loader.new(config_path, Kernel.binding)
       end

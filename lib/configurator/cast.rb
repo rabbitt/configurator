@@ -20,8 +20,6 @@ require 'singleton'
 require 'monitor'
 
 module Configurator
-  class InvalidCastType < Error; end
-
   module Cast
     class Director
       class << self
@@ -57,6 +55,8 @@ module Configurator
                 Cast::Collection.new(type.first)
               when :uri, /uri/i then
                 Cast::URI.new
+              when :any, /any/i then
+                Cast::Generic.new
               when ::Symbol, ::String then
                 begin
                   Cast.const_get(type.to_s.capitalize).new
@@ -76,20 +76,20 @@ module Configurator
       end
     end
 
-    class GenericCast
-      def _cast(value)
-        value.to_s
-      end
+    class Generic
+      def _cast(value) value; end
       private :_cast
 
       def convert(value)
-        _cast(value)
+        begin
+          _cast(value);
+        rescue StandardError => e
+          raise CastError, e.message
+        end
       end
     end
 
-    class String < GenericCast; end
-
-    class Collection < GenericCast
+    class Collection < Generic
       def initialize(subtype)
         @cast = Director.acquire(subtype)
       end
@@ -99,25 +99,35 @@ module Configurator
       end
     end
 
-    class Array < GenericCast
-      def _cast(value)
-        [*value] rescue [value]
-      end
+    class Array < Generic
+      def _cast(value) [*value] rescue [value]; end
     end
 
-    class Integer < GenericCast
-      def _cast(value)
-        value.to_i
-      end
+    class String < Generic
+      def _cast(value) value.to_s; end
     end
 
-    class Float < GenericCast
-      def _cast(value)
-        value.to_f
-      end
+    class Integer < Generic
+      def _cast(value) value.to_i; end
     end
 
-    class Boolean < GenericCast
+    class Float < Generic
+      def _cast(value) value.to_f; end
+    end
+
+    class Symbol < Generic
+      def _cast(value) value.to_s.to_sym; end
+    end
+
+    class URI < Generic
+      def _cast(value) ::URI.parse(value.to_s); end
+    end
+
+    class Path < Generic
+      def _cast(value) ::Pathname.new(value); end
+    end
+
+    class Boolean < Generic
       def _cast(value)
         case value
           when /(off|false|no|disabled?)/ then false
@@ -127,25 +137,7 @@ module Configurator
       end
     end
 
-    class Symbol < GenericCast
-      def _cast(value)
-        value.to_s.to_sym
-      end
-    end
-
-    class URI < GenericCast
-      def _cast(value)
-        ::URI.parse(value.to_s)
-      end
-    end
-
-    class Path < GenericCast
-      def _cast(value)
-        ::Pathname.new(value)
-      end
-    end
-
-    class Callable < GenericCast
+    class Callable < Generic
       def initialize(proc)
         @proc = proc
       end
