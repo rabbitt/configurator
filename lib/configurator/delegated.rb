@@ -47,6 +47,7 @@ module Configurator
 
     def cast; @option.caster.class.name.split('::').last.downcase.to_sym; end
     def type; @option.type; end
+    def default; @option.default; end
     def valid?; @option.valid?; end
     def required?; @option.required?; end
     def optional?; @option.optional?; end

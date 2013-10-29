@@ -32,7 +32,7 @@ module Configurator
       @guarding = false
 
       @default = (options.delete(:default) || UNDEFINED_OPTION).freeze
-      @type    = (type = options.delete(:type)).nil? ? compute_type_from_default : type
+      @type    = (type = options.delete(:type)).nil? ? compute_type(@default) : type
       @caster  = (cast_type = options.delete(:cast)).nil? ? Cast::Director[@type] : Cast::Director[cast_type]
 
       @required    = determine_if_required?(options)
@@ -43,18 +43,8 @@ module Configurator
       end
     end
 
-    def compute_type_from_default
-      if (type = base_type_to_sym(@default)) == :array
-        if @default.size > 0
-          type = [base_type_to_sym(@default.first)]
-        end
-      end
-      type
-    end
-
-    def base_type_to_sym(type)
+    def compute_type(type)
       case type
-        when UNDEFINED_OPTION then :any
         when Bignum, Fixnum then :integer
         when Float then :float
         when Symbol then :symbol
@@ -62,7 +52,10 @@ module Configurator
         when String then :string
         when Pathname then :path
         when URI then :uri
-        when Array then :array
+        when Array then
+          type.size <= 0 ? :array : [compute_type(type.first)]
+        when Proc then
+          compute_type(type.call) rescue :any
         else :any
       end
     end
@@ -78,12 +71,13 @@ module Configurator
 
       begin
         with_loop_guard do
-          value = case value.arity
-            when 0 then value.call
-            when 1 then value.call(parent)
-            when -1, 2 then value.call(parent, parent.root)
-            else raise OptionInvalidCallableDefault, "#{path_name}: callable default must accept -1..2 arguments"
-          end if value.respond_to? :call
+          if value.respond_to? :call
+            unless value.arity == 0
+              raise OptionInvalidCallableDefault, "#{path_name}: callable defaults must not accept any arguments"
+            end
+
+            value = value.call
+          end
         end
       rescue OptionLoopError
         raise # bubble up
