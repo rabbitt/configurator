@@ -22,16 +22,23 @@ module Configurator
   class ValidationError < Error; end
   class ConfigurationInvalid < Error; end
 
+  class InvalidOptionPath < Error; end
+
   class CastError < Error; end
   class InvalidCastType < CastError; end
   class CastFailure < CastError; end
 
   class OptionError < Error; end
+
+  class RenameFailed < OptionError; end
+  class DeprecateFailed < OptionError; end
+  class AliasFailed < OptionError; end
+
   class OptionExists < OptionError; end
+  class OptionNotExist < OptionError; end
   class OptionInvalid < OptionError; end
   class OptionInvalidArgument < OptionError; end
   class OptionInvalidCallableDefault < OptionError; end
-  class RenameFailed < OptionError; end
 
   class OptionLoopError < SystemStackError
     attr_accessor :stack

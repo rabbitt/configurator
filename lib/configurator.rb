@@ -18,13 +18,13 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 require 'configurator/errors'
 require 'configurator/dsl'
+require 'configurator/extensions'
+require 'configurator/delegated'
 
 module Configurator
   autoload :Loader,      'configurator/loader'
   autoload :Section,     'configurator/section'
   autoload :Option,      'configurator/option'
-  autoload :OptionValue, 'configurator/delegated'
   autoload :Cast,        'configurator/cast'
-  autoload :Delegated,   'configurator/delegated'
   autoload :VERSION,     'configurator/version'
 end

@@ -18,10 +18,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 module Configurator
   class Section
-    attr_reader :parent, :name, :options
+    attr_accessor :name, :parent
+    attr_reader :table
 
     def initialize(name, parent = nil, options = {})
-      @options = {}
+      @table = {}
       @parent  = parent
       @name    = name
 
@@ -29,52 +30,42 @@ module Configurator
     end
 
     def type; :section; end
+    def deprecated?; false; end
+    def renamed?; false; end
 
-    def root
-      parent.nil? ? self : parent.root
-    end
-
-    def path_name
-      parent.nil? ? name : [ parent.path_name, name ].join('.')
-    end
-
-    def required?
-      options.any? { |k,o| o.required? }
-    end
-
-    def optional?
-      !required?
-    end
+    def root; parent.nil? ? self : parent.root; end
+    def path_name; parent.nil? ? name : [ parent.path_name, name ].join('.'); end
+    def required?; options.any? { |k,o| o.required? }; end
+    def optional?; !required?; end
 
     def include?(option_name)
-      @options.key? option_name.to_sym
+      @table.key? option_name.to_sym
     end
 
     def [](option_name)
-      @options[option_name.to_sym].value
+      @table[option_name.to_sym]
     end
 
     def []=(option_name, value)
-      @options[option_name.to_sym].value = value
+      @table[option_name.to_sym].value = value
     end
 
     def each(&block)
-      @options.each &block
+      @table.each &block
     end
 
-    def inject(what, &block)
-      @options.inject(what, &block)
+    def inject(*args, &block)
+      @table.inject(*args, &block)
     end
 
     def to_h
       inject({}) { |hash,(key,value)|
-        hash[key] = value.to_h rescue value.value
-        hash
+        hash.tap {|h|
+          unless value.deprecated? || value.renamed?
+            h[key] = value.to_h rescue value.value
+          end
+        }
       }
-    end
-
-    def to_yaml
-      to_h.to_yaml
     end
 
     def config() self; end
@@ -85,18 +76,18 @@ module Configurator
         warn "#{path_name}: invalid load data for section (#{data.inspect}) - skipping..."
       else
         data.each { |key,value|
-          if not @options.key? key.to_sym
+          if not @table.key? key.to_sym
             warn "#{path_name}: unable to load data for unknown key #{key.inspect} -> #{value.inspect}"
             next
           end
-          @options[key.to_sym].value = value
+          @table[key.to_sym].value = value
         }
       end
     end
     alias :value= :load
 
     def requirements_fullfilled?
-      @options.collect { |k,v|
+      @table.collect { |k,v|
         if v.respond_to? :requirements_fullfilled?
           v.requirements_fullfilled?
         else
@@ -108,93 +99,137 @@ module Configurator
     end
 
     def option(option_name, *args)
-      options = args.last.is_a?(Hash) ? args.pop : {}
-      options.merge!(:type => args.first)
+      _options = args.last.is_a?(Hash) ? args.pop : {}
+      _options.merge!(:type => args.first)
 
       option_name = option_name.to_sym
-      deprecated  = options.delete(:deprecated)
-      renamed_to  = options.delete(:rename)
+      deprecated  = _options.delete(:deprecated)
 
-      option = Option.new(option_name, self, options)
-      option = deprecate(option, deprecated) if deprecated
-      option = rename(option, renamed_to) if renamed_to
+      option = Option.new(option_name, self, _options)
+
+      if deprecated
+        option = DelegatedOption::Deprecated.new(
+          option.name, option.parent, option, end_of_life
+        )
+      end
 
       add_option option_name, option
+    end
+
+    def options(*names)
+      names.each do |option_name|
+        option option_name
+      end
     end
 
     def section(option_name, options = {}, &block)
       option_name = option_name.to_sym
       deprecated  = options.delete(:deprecated)
-      renamed_to  = options.delete(:rename)
 
-      section = Section.new(option_name, self).tap { |s| s.instance_eval(&block) }
-      section = deprecate(section, deprecated) if deprecated
-      section = rename(section, renamed_to) if renamed_to
+      section = Section.new(option_name, self).tap { |s|
+        s.instance_eval(&block) if block_given?
+      }
+
+      if deprecated
+        section = DelegatedOption::Deprecated.new(
+          section.name, section.parent, section, end_of_life
+        )
+      end
 
       add_option(option_name, section)
     end
 
-    def deprecate(option, end_of_life = nil)
-      Delegated::Deprecated.new(option.name, option.parent, option, end_of_life)
+    def alias!(orig_path, new_path)
+      orig_path = "root.#{orig_path}" unless orig_path.include? 'root.'
+      new_path  = "root.#{new_path}" unless new_path.include? 'root.'
+
+      unless _option = root.get_path(orig_path)
+        raise DeprecateFailed, "Unable to alias #{new_path} to #{orig_path} - option does not appear to be defined."
+      end
+
+      _option = root.get_path(orig_path)
+      _parent, _name = new_path.option_path_split
+
+      _parent = root.get_path(_parent)
+      new_option  = AliasedOption.new(_name, _parent, _option)
+      _parent.add_option(_name, new_option)
     end
 
-    def rename(option, to_path)
-      if to_path.is_a? Symbol
-        new_path, new_name = self, to_path
-      else
-        # otherwise, if it's a dot separated string, it's a
-        # full path to a new section.name locaiton
-        new_section, new_name = (parts = to_path.split('.'))[0..-2].join('.'), parts.last
-        new_path = root.get_path(new_section)
+    def deprecate!(option_paths, end_of_life = nil)
+      [*option_paths].collect {|option_path|
+        option_path = "root.#{option_path}" unless option_path.include? 'root.'
+
+        unless _option = root.get_path(option_path)
+          raise DeprecateFailed, "Unable to deprecated #{option_path} - option does not appear to be defined."
+        end
+
+        _option = DeprecatedOption.new(_option.name, _option.parent, _option, end_of_life)
+        _option.parent.replace_option(_option.name, _option)
+      }
+    end
+    alias :deprecated! :deprecate!
+
+    # like alias but with reversed arguments and a warning on assignment
+    # note: new path must already exist. old_path is created as an alias
+    # to new_path.
+    def rename!(old_path, target_path)
+      old_path    = "root.#{old_path}" unless old_path.include? 'root.'
+      target_path = "root.#{target_path}" unless target_path.include? 'root.'
+
+      unless _option = root.get_path(target_path)
+        raise OptionNotExist, "option #{target_path} does not exist -  target path must exist for rename."
       end
+
+      _parent, _name = old_path.option_path_split
+      _section = root.get_path(_parent)
+
+      renamed_option = RenamedOption.new(_name, _section, _option)
 
       begin
-        Delegated::Renamed.new(new_name, new_path, option).tap { |_option|
-          # new location
-          new_path.add_option(new_name, _option)
-        }
+        _section.add_option(_name, renamed_option)
       rescue OptionExists => e
-        raise RenameFailed, "Unable to rename #{option.path_name} -> #{new_path.path_name}.#{new_name}"
+        raise RenameFailed, "Unable to rename #{old_path} -> #{target_path}"
       end
     end
-
-    alias :original_respond_to? :respond_to?
-    def respond_to?(method, include_private = false)
-      @options.key?(method) || original_respond_to?(method, include_private)
-    end
-
-    protected
+    alias :renamed! :rename!
 
     def add_option(option_name, object)
       option_name = option_name.to_sym
-      if @options.key? option_name
+      if @table.key? option_name
         raise OptionExists, "Option #{path_name}.#{option_name} already exists"
       end
 
-
-      @options[option_name] = OptionValue.new(object).tap {
+      @table[option_name] = object.tap {
         self.class.class_eval(<<-EOF, __FILE__, __LINE__ + 1)
           def #{option_name}()
-            @options[#{option_name.inspect}]
+            OptionValue.new(@table[#{option_name.inspect}])
           end
 
           def #{option_name}=(_value)
-            #{option_name}.value = _value
+            @table[#{option_name.inspect}].value = _value
           end
         EOF
       }
     end
 
+    def replace_option(name, new_option)
+      name = name.to_sym
+      unless @table.include? name
+        raise OptionNotExist, "#{path_name}.#{name} doesn't exist"
+      end
+      @table[name] = new_option
+    end
+
     def get_path(path)
       begin
         # remove the root - we start there anyway
-        path.gsub!(/^root\./, '')
+        path.gsub!(/^root\.?/, '')
         current_path = [:root]
 
         path.split('.').collect(&:to_sym).inject(root) do |option, path_component|
           current_path << path_component
           unless option.include? path_component
-            raise InvalidPath, "#{current_path.join('.')}: doesn't exist in the current configuration."
+            raise InvalidOptionPath, "#{current_path.join('.')}: doesn't exist in the current configuration."
           else
             option = option[path_component]
           end
@@ -202,6 +237,11 @@ module Configurator
       rescue StandardError => e
         warn "#{e.class.name}: #{e.message}\n\t#{e.backtrace.join("\n\t")}"
       end
+    end
+
+    alias :original_respond_to? :respond_to?
+    def respond_to?(method, include_private = false)
+      @table.key?(method) || original_respond_to?(method, include_private)
     end
 
     def method_missing(method, *args, &block)

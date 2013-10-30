@@ -21,10 +21,10 @@ module Configurator
     def initialize(option)
       @option = option
 
-      case @option.value
-        when String then
+      case @option.type
+        when :string then
           self.class.send(:define_method, :to_str) { self.to_s } unless defined? :to_str
-        when Numeric then
+        when :integer then
           self.class.send(:define_method, :to_int) { self.to_i } unless defined? :to_int
       end
 
@@ -45,6 +45,8 @@ module Configurator
       end
     end
 
+    def empty?; !option.value.nil? && @option.value.empty?; end
+    def nil?; @option.value.nil?; end
     def cast; @option.caster.class.name.split('::').last.downcase.to_sym; end
     def type; @option.type; end
     def default; @option.default; end
@@ -61,47 +63,50 @@ module Configurator
     end
   end
 
-  class Delegated < SimpleDelegator
+  class DelegatedOption < SimpleDelegator
     attr_accessor :name, :parent
     private :name=, :parent=
 
-    def initialize(name, parent, object)
-      @name, @parent = name, parent
+    def initialize(new_name, new_parent, object)
+      @name, @parent = new_name, new_parent
       super(object)
     end
 
-    def path_name
+    def root() parent.nil? ? self : parent.root; end
+    def path_name()
       parent.nil? ? name : [ parent.path_name, name ].join('.')
     end
 
-    def root
-      parent.nil? ? self : parent.root
+    def renamed?; self.is_a? RenamedOption; end
+    def deprecated?; self.is_a? DeprecatedOption; end
+    def emit_warning(); end
+    def value() emit_warning; super; end
+    def value=(v) emit_warning; super; end
+  end
+
+  class AliasedOption < DelegatedOption; end
+
+  class RenamedOption < AliasedOption
+    def emit_warning
+      warn "Configuration option #{path_name} was renamed to #{__getobj__.path_name} - please update your configuration"
+    end
+  end
+
+  class DeprecatedOption < DelegatedOption
+    def initialize(name, parent, object, end_of_life = nil)
+      @eol = end_of_life
+      super(name, parent, object)
     end
 
-    def renamed?; self.is_a? Renamed; end
-    def deprecated?; self.is_a? Deprecated; end
-
-    class Renamed < Delegated
-      def initialize(name, parent, object)
-        super.tap {
-          warn "#{object.path_name} renamed to #{path_name} - please update your configuration"
-        }
-      end
-    end
-
-    class Deprecated < Delegated
-      def initialize(name, parent, object, end_of_life = nil)
-        super(name, parent, object).tap {
-          if end_of_life && !end_of_life.is_a?(TrueClass)
-            end_of_life = case end_of_life
-              when Date, DateTime, Time then end_of_life.strftime('%F')
-              else end_of_life
-            end
-            warn "#{path_name} is deprecated and will no longer be available on or after #{end_of_life}."
-          else
-            warn "#{path_name} is deprecated and will be removed soon."
-          end
-        }
+    def emit_warning
+      if @eol && !@eol.is_a?(TrueClass)
+        @eol = case @eol
+          when Date, DateTime, Time then @eol.strftime('%F')
+          else @eol
+        end
+        warn "Configuration option #{path_name} is deprecated and will no longer be available on or after #{@eol}."
+      else
+        warn "Configuration option #{path_name} is deprecated and will be removed soon."
       end
     end
   end

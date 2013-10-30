@@ -20,7 +20,8 @@ require 'pathname'
 
 module Configurator
   class Option
-    attr_reader :name, :parent, :type, :default, :caster, :validations, :required
+    attr_accessor :name, :parent
+    attr_reader :type, :default, :caster, :validations, :required
     private :validations, :required
 
     UNDEFINED_OPTION = :__undefined__
@@ -45,6 +46,8 @@ module Configurator
 
     def compute_type(type)
       case type
+        when UNDEFINED_OPTION then :any
+        when OptionValue then type.type
         when Bignum, Fixnum then :integer
         when Float then :float
         when Symbol then :symbol
@@ -55,13 +58,17 @@ module Configurator
         when Array then
           type.size <= 0 ? :array : [compute_type(type.first)]
         when Proc then
-          compute_type(type.call) rescue :any
+          with_loop_guard do
+            compute_type(type.call)
+          end rescue :any
         else :any
       end
     end
 
     def value=(v)
-      validate(v) ? @value = v : nil
+      return nil unless validate(v)
+      parent.instance_variable_set("@__#{name}".to_sym, nil)
+      @value = v
     end
 
     def value
@@ -75,7 +82,6 @@ module Configurator
             unless value.arity == 0
               raise OptionInvalidCallableDefault, "#{path_name}: callable defaults must not accept any arguments"
             end
-
             value = value.call
           end
         end
@@ -95,10 +101,13 @@ module Configurator
       value.respond_to?(:include?) ? value.include?(data) : false
     end
 
+    def empty?; value.nil? || value.empty?; end
     def valid?; validate(value); end
     def required?; !!@required; end
     def optional?; !required?; end
     def path_name; [ parent.path_name, name ].join('.'); end
+    def deprecated?; false; end
+    def renamed?; false; end
 
   private
 
@@ -155,17 +164,10 @@ module Configurator
               end
               true
             }
-          elsif expectations.is_a? Array
+          else
             validations << lambda { |_value|
               unless expectations.include?(_value)
                 raise ValidationError, "#{path_name}: Failed expectation: #{_value.inspect} not in list: #{expectations.join(', ')}"
-              end
-              true
-            }
-          else
-            validations << lambda { |_value|
-              unless expectations == _value
-                raise ValidationError, "#{path_name}: Failed expectation: #{_value.inspect} != #{expectations.inspect}"
               end
               true
             }
@@ -185,13 +187,10 @@ module Configurator
 
       case validation_type
         when Array;
-          if validation_type.empty?
-            _value.is_a?(Array)
-          else
-            [*_value].flatten.all? { |v|
-              validate_type(v, validation_type.first)
-            }
-          end
+          return _value.is_a?(Array) if validation_type.empty?
+          [*_value].flatten.all? { |v|
+            validate_type(v, validation_type.first)
+          }
         when :any; true
         when :array; _value.is_a?(Array)
         when :boolean; _value.is_a?(FalseClass) || _value.is_a?(TrueClass)

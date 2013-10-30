@@ -46,6 +46,10 @@ module Configurator
     alias :configuration :config
     alias :root :config
 
+    def to_yaml
+      instance.to_yaml
+    end
+
     alias :_inspect :inspect
     def inspect
       s = ''
@@ -99,6 +103,18 @@ module Configurator
             raise ConfigurationInvalid, "Missing one or more required options."
           end
         }
+      end
+
+      def alias!(orig_path, new_path)
+        config.alias!(orig_path, new_path)
+      end
+
+      def deprecate!(path, end_of_life = nil)
+        config.deprecate!(path, end_of_life)
+      end
+
+      def rename!(old_path, target_path)
+        config.rename!(old_path, target_path)
       end
 
       def load_from_hash(hash)
