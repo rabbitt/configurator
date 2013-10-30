@@ -59,10 +59,10 @@ module Configurator
     end
 
     def to_h
-      inject({}) { |hash,(key,value)|
+      inject({}) { |hash,(_name,_option)|
         hash.tap {|h|
-          unless value.deprecated? || value.renamed?
-            h[key] = value.to_h rescue value.value
+          unless _option.deprecated? || _option.renamed?
+            h[_name] = _option.to_h rescue _option.value
           end
         }
       }
