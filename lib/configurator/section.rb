@@ -154,6 +154,7 @@ module Configurator
       new_option  = AliasedOption.new(_name, _parent, _option)
       _parent.add_option(_name, new_option)
     end
+    alias :aliased! :alias!
 
     def deprecate!(option_paths, end_of_life = nil)
       [*option_paths].collect {|option_path|
@@ -192,6 +193,7 @@ module Configurator
       end
     end
     alias :renamed! :rename!
+    alias :moved! :rename!
 
     def add_option(option_name, object)
       option_name = option_name.to_sym

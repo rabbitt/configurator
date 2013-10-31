@@ -45,18 +45,21 @@ module Configurator
       end
     end
 
-    def empty?; !option.value.nil? && @option.value.empty?; end
-    def nil?; @option.value.nil?; end
+    def name; @option.name; end
+    def parent; @option.parent; end
     def cast; @option.caster.class.name.split('::').last.downcase.to_sym; end
     def type; @option.type; end
     def default; @option.default; end
+    def value; self; end
+
+    def root; parent ? parent.root : nil; end
+    def path_name; @option.path_name; end
+
+    def empty?; !option.value.nil? && @option.value.empty?; end
+    def nil?; @option.value.nil?; end
     def valid?; @option.valid?; end
     def required?; @option.required?; end
     def optional?; @option.optional?; end
-    def path_name; @option.path_name; end
-    def name; @option.name; end
-
-    def value; self; end
   end
 
   class DelegatedOption < SimpleDelegator
