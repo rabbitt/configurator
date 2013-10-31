@@ -184,7 +184,7 @@ module Configurator
           else
             validations << lambda { |_value|
               unless expectations.include?(_value)
-                raise ValidationError, "#{path_name}: Failed expectation: #{_value.inspect} not in list: #{expectations.join(', ')}"
+                raise ValidationError, "#{path_name}: Failed expectation: #{_value.inspect} not in list: #{expectations.collect(&:inspect).join(', ')}"
               end
               true
             }
