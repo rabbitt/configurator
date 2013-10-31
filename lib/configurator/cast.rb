@@ -92,6 +92,7 @@ module Configurator
     class Collection < Generic
       def initialize(subtype)
         @cast = Director.acquire(subtype)
+        raise ArgumentError, "Collection subtype cannot be another collection" if @cast.is_a? Collection
       end
 
       def _cast(value)

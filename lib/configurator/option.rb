@@ -34,7 +34,7 @@ module Configurator
 
       @default = (options.delete(:default) || UNDEFINED_OPTION).freeze
       @type    = (type = options.delete(:type)).nil? ? compute_type(@default) : type
-      @caster  = (cast_type = options.delete(:cast)).nil? ? Cast::Director[@type] : Cast::Director[cast_type]
+      @caster  = (cast = options.delete(:cast)).nil? ? Cast::Director[@type] : Cast::Director[cast]
 
       @required    = determine_if_required?(options)
       @validations = gather_validations(options)
@@ -42,6 +42,10 @@ module Configurator
       if options.count > 0
         warn "#{path_name}: encountered unknown options: #{options.inspect}"
       end
+    rescue StandardError => e
+      raise OptionInvalid.new("Failed to add option #{parent.path_name}.#{name}: #{e.class.name}: #{e.message}") { |ve|
+        ve.set_backtrace(e.backtrace)
+      }
     end
 
     def compute_type(type)
@@ -195,13 +199,15 @@ module Configurator
       begin
         # try on just the raw value first
         validations.all? { |validation| validation.call(_value.freeze) }
-      rescue ValidationError => e
+      rescue StandardError => initial_exception
         begin
           # now try on the converted value
           cast_value = @caster.convert(_value)
           validations.all? { |validation| validation.call(cast_value) }
-        rescue ValidationError, CastError => e
-          raise ValidationError, "#{path_name}: Failed validation: #{e.message}"
+        rescue ValidationError => e
+          raise ValidationError.new(e.message).tap {|ve| ve.set_backtrace(initial_exception.backtrace) }
+        rescue CastError
+          raise initial_exception
         end
       end
     end
@@ -218,14 +224,16 @@ module Configurator
           }
         when :scalar then
           validate_type(_value, :integer) || validate_type(_value, :float) ||
-          validate_type(_value, :symbol) || validate_type(_value, :string)
+          validate_type(_value, :symbol) || validate_type(_value, :string) ||
+          validate_type(_value, :boolean)
         when :boolean then
           _value.is_a?(FalseClass) || _value.is_a?(TrueClass)
         when :float then
           ((Float(_value) rescue nil) == _value.to_f)
         when :integer then
           ((Float(_value).to_i rescue nil) == _value.to_i)
-        when :path then _value.is_a? Pathname
+        when :path then
+          _value.is_a?(Pathname)
         when :array then _value.is_a?(Array)
         when :hash then _value.is_a?(Hash)
         when :string then _value.is_a? String

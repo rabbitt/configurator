@@ -33,6 +33,10 @@ module Psych
       def visit_Configurator_Option(target)
         send(@dispatch_cache[target.value.class], target.value)
       end
+
+      def visit_Pathname(target)
+        send(@dispatch_cache[target.to_s.class], (target.realpath rescue taret).to_s)
+      end
     end
   end
 end
