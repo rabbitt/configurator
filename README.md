@@ -16,7 +16,8 @@ module Application
       section :general do
         option :bar, default: 'baz'
         option :domain, default: -> { %x { hostname -f }.strip.split('.')[-2..-1].join('.') }
-        option :email,  validate: ->(_value) { _value.include? '@' or raise ValidationError, "email missing @" }
+        option :email,  validate: ->(_value) { _value.include?('@') && _value.count('.') >= 1 },
+                        validate_message: "email must contain @ and at least one '.'"
       end
       section :ldap do
         option :hostname,   default: -> { "ldap.%s" % root.general.domain }
