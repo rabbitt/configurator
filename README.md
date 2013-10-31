@@ -174,6 +174,8 @@ config.misc.foo === config.general.bar # -> true
 
 ### Loading config file
 
+Probably the most import functionality of configurator is its ability to load a configuration file against this predefined structure that you create, and have the loaded values validated against your structure. Following is an example of how to load your data:
+
 ```ruby
 Application::Config.load(File.expand_path('/path/to/config.yml'), :production)
 trap('HUP') { Application::Config.reload! }
