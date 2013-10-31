@@ -71,7 +71,7 @@ Valid options for the `option` command are:
   <dd>(<em>String</em>) Message to provide to the user if the option fails the custom validation rule (only relevant when using a callable with :validate).</dd>
 
   <dt>:expect</dt>
-  <dd>(<em>Array|Callable</em>)Allows you to specify a list, or callable to validate the value against. If it a list (array) is provided, it will ensure that the input value is in that list. Otherwise, with a callable, it functions like :validate above.</dd>
+  <dd>(<em>Array|Callable</em>) Allows you to specify a list, or callable to validate the value against. If it a list (array) is provided, it will ensure that the input value is in that list. Otherwise, with a callable, it functions like :validate above.</dd>
 
   <dt>:expect_message</dt>
   <dd>(<em>String</em>) Message to provide to the user if the option fails the custom expect rule (only relevant when using a callable with :expect).</dd>
