@@ -49,9 +49,11 @@ Options are the actual meat of your configuration and can be defined with specif
 
 The format of an option definition is as follows:
 
-`option <name>, [[type], [options]]`
+`option <name>[[, type], options]`
 
 Note: type is completely optionally, however, if you don't provide a type, your option will be marked as type `:any` which essentially marks it as accepting any data type, and prevents type validation from happening against it (unless you provide your own validation rule).
+
+As you build your configuration object, methods will be created automatically at each level providing you with access to each section and option. For example, given the above example `Application::Config` object, you would be able to reference the ldap encryption option by way of `Application::Config.ldap.encryption`. Additionally, each node has access back to it's parent node as well as the root node, so you could also (but probably never would) do the following to get the general domain option: `Application::Config.ldap.encryption.parent.hostname.root.general.domain`
 
 ##### Types
 
@@ -91,29 +93,54 @@ Configurator types are used for both validation and type-casting, with validatio
 
   <dt>:path</dt>
   <dd>Used for pathing data, such as fully qualified, or relative paths to files/directories.</dd>
-  <dd><strong><em>Type Validation</em></strong>: Ensures </dd>
-  <dd><strong><em>Type Casting</em></strong>: Converts path data to Pathname object.</dd>
+  <dd><strong><em>Type Validation</em></strong>: Ensures value can be represented as a valid Pathname object.</dd>
+  <dd><strong><em>Type Casting</em></strong>: Converts value to a Pathname object.</dd>
 
   <dt>:uri</dt>
   <dd></dd>
-  <dd><strong><em>Type Validation</em></strong>: </dd>
-  <dd><strong><em>Type Casting</em></strong>: </dd>
+  <dd><strong><em>Type Validation</em></strong>: Ensures value can be represented sa a valid URI object.</dd>
+  <dd><strong><em>Type Casting</em></strong>: Converts vaue to a URI object</dd>
 
   <dt>[&lt;subtype&gt;]</dt>
-  <dd></dd>
-  <dd><strong><em>Type Validation</em></strong>: </dd>
-  <dd><strong><em>Type Casting</em></strong>: </dd>
+  <dd>This type represents a collection of subtype objects, i.e, an array of objects of one given type. Subtype can be one of the types listed here, except another collection.</dd>
+  <dd><strong><em>Type Validation</em></strong>: Enssures the object is an array containing only elements of type 'subtype'</dd>
+  <dd><strong><em>Type Casting</em></strong>: Converts all elements in the array to type 'subtype'</dd>
 </dl>
 
 <dl>
 </dl>
 
 ##### Defaults
-##### Casting to another type
-##### Validations
-#### Deprecations
+
+Defaults can be used to provide a default value for configuration options, and can either be a literal value or a callable lambda. Defaults are only used in the event that no overriding value has been assigned to the configuration option (either by loading a YAML config file via, or direct assignment). Callables must not accept any calling parameters and are executed within the context of the option's parent section. This allows for references to the option's sibling options, as well as the root and parent sections. See `ldap.hostname` and `ldap.user_base` as examples of this in the example under Usage above.
+
+##### Deprecations, Renames and Aliases
+
+In addition to specifying defaults, validations and casting types, you can also mark options as deprecated or renamed as well as alias one option to another. Deprecating, Renaming and Aliasing are all useful options for maintaining backwards compatability with your previous configurations. Additionally, it serves as a way to let your users know when changes have been made to the underlying structure of the configuration, allowing them to update their configuration files appropriately.
+
+###### Deprecation
+
+Deprecated options are a way of letting your end user know that a given option is planned for removal - even allowing for an end of life date to be provided. The signature for marking an option as deprecated is:
+
+  `deprecated! '&lt;option.path>'[, [end of life date]]`
+
+The option.path is the list of names of the path, starting with 'root' and proceeding section by section all the way to the option itself, separated by a dots. For example, the option path for `Application::Config.ldap.encryption` would be `root.ldap.encryption` - though 'root.' is optionally, so you could just as easily write 'ldap.encryption'.
+
 #### Renames
+
+Renames are a way of telling your users that an option has been renamed, or moved from one option path name to another. With renames, you should have already renamed/moved your option to it's new name (and optionally section) before calling `renamed!`. Once you call `renamed!`, a new option is added to your configuration using the `legacy path` you provided, and links that legacy path to the `new path`. Any assignments, or reads, from the `legacy path` will trigger warnings letting the user know that the path has changed, and what it has changed to.
+
+The signature for a rename is:
+
+  `renamed! 'legacy path', 'new path'`
+
 #### Aliases
+
+Aliases function like renames but do not actually emit warnings. They are useful as alternate access points for a given configuration option. Like renames, the link target must exist or an exception will be thrown.
+
+The signature for an alias is similar to Ruby's own alias method and is:
+
+  `alias! 'original.path', 'new.path'`
 
 #### Accessing / Modifying options
 
