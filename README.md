@@ -51,16 +51,42 @@ The format of an option definition is as follows:
 
 `option <name>[[, type], options]`
 
-Note: type is completely optionally, however, if you don't provide a type, your option will be marked as type `:any` which essentially marks it as accepting any data type, and prevents type validation from happening against it (unless you provide your own validation rule).
+Note: type is completely optionally, however, if you don't provide a type, your option will be marked as type `:any` (unless you specify a default) which essentially marks it as accepting any data type, and prevents type validation from happening against it (unless you provide your own validation rule).
 
 As you build your configuration object, methods will be created automatically at each level providing you with access to each section and option. For example, given the above example `Application::Config` object, you would be able to reference the ldap encryption option by way of `Application::Config.ldap.encryption`. Additionally, each node has access back to it's parent node as well as the root node, so you could also (but probably never would) do the following to get the general domain option: `Application::Config.ldap.encryption.parent.hostname.root.general.domain`
 
-##### Types
-
-Configurator types are used for both validation and type-casting, with validation using the type-cast version of the input value. Following are the list of types that Configurator understands:
+Valid options for the `option` command are:
 
 <dl>
+  <dt>:default</dt>
+  <dd>(<em>Mixed</em>) Can be used to specify a default value for the option. If you use a callable, it must <em>not</em> accept any parameters.</dd>
 
+  <dt>:cast</dt>
+  <dd>(<em>Mixed</em>) Can be used to specify a cast type for the option. If you use a callable, it <em>must</em> accept one parameters, the value to convert.</dd>
+
+  <dt>:validate</dt>
+  <dd>(<em>Boolean|Callable</em>) Can be used to specify validation rule. Default value is true. If you specify False, then no validation will be performed. If you use a callable, it <em>must</em> accept one parameters, the value to validate.</dd>
+
+  <dt>:validate_message</dt>
+  <dd>Message to provide to the user if the option fails the custom validation rule (only relevant when using a callable with :validate).</dd>
+
+  <dt>:expect</dt>
+  <dd>Allows you to specify a list, or callable to validate the value against. If it a list (array) is provided, it will ensure that the input value is in that list. Otherwise, with a callable, it functions like :validate above.</dd>
+
+  <dt>:expect_message</dt>
+  <dd>Message to provide to the user if the option fails the custom expect rule (only relevant when using a callable with :expect).</dd>
+
+  <dt>:optional OR :required</dt>
+  <dd>(<em>boolean</em>) specifies where the option is required or not. Note: you can only specify one or the other, not both :optional <em>and</em> :required.</dd>
+</dl>
+
+##### Types
+
+Configurator types are used for both validation and type-casting. Type is generally specified at option creation, but can be left off if you specify a default for the option. If your option has a default, and not type was specified, Configurator will make effort guess (based on the default) as to what the type should be.
+
+Following are the list of types that Configurator understands:
+
+<dl>
   <dt>:any</dt>
   <dd>Default type if none specified.</dd>
   <dd><strong><em>Type Validation</em></strong>: Any data is considered valid for an option of this type.</dd>
