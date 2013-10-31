@@ -126,7 +126,7 @@ Deprecated options are a way of letting your end user know that a given option i
 
 The option.path is the list of names of the path, starting with 'root' and proceeding section by section all the way to the option itself, separated by a dots. For example, the option path for `Application::Config.ldap.encryption` would be `root.ldap.encryption` - though 'root.' is optionally, so you could just as easily write 'ldap.encryption'.
 
-#### Renames
+###### Renames
 
 Renames are a way of telling your users that an option has been renamed, or moved from one option path name to another. With renames, you should have already renamed/moved your option to it's new name (and optionally section) before calling `renamed!`. Once you call `renamed!`, a new option is added to your configuration using the `legacy path` you provided, and links that legacy path to the `new path`. Any assignments, or reads, from the `legacy path` will trigger warnings letting the user know that the path has changed, and what it has changed to.
 
@@ -134,7 +134,7 @@ The signature for a rename is:
 
   `renamed! 'legacy path', 'new path'`
 
-#### Aliases
+###### Aliases
 
 Aliases function like renames but do not actually emit warnings. They are useful as alternate access points for a given configuration option. Like renames, the link target must exist or an exception will be thrown.
 
