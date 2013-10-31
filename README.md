@@ -68,13 +68,13 @@ Valid options for the `option` command are:
   <dd>(<em>Boolean|Callable</em>) Can be used to specify validation rule. Default value is true. If you specify False, then no validation will be performed. If you use a callable, it <em>must</em> accept one parameters, the value to validate.</dd>
 
   <dt>:validate_message</dt>
-  <dd>Message to provide to the user if the option fails the custom validation rule (only relevant when using a callable with :validate).</dd>
+  <dd>(<em>String</em>) Message to provide to the user if the option fails the custom validation rule (only relevant when using a callable with :validate).</dd>
 
   <dt>:expect</dt>
-  <dd>Allows you to specify a list, or callable to validate the value against. If it a list (array) is provided, it will ensure that the input value is in that list. Otherwise, with a callable, it functions like :validate above.</dd>
+  <dd>(<em>Array|Callable</em>)Allows you to specify a list, or callable to validate the value against. If it a list (array) is provided, it will ensure that the input value is in that list. Otherwise, with a callable, it functions like :validate above.</dd>
 
   <dt>:expect_message</dt>
-  <dd>Message to provide to the user if the option fails the custom expect rule (only relevant when using a callable with :expect).</dd>
+  <dd>(<em>String</em>) Message to provide to the user if the option fails the custom expect rule (only relevant when using a callable with :expect).</dd>
 
   <dt>:optional OR :required</dt>
   <dd>(<em>boolean</em>) specifies where the option is required or not. Note: you can only specify one or the other, not both :optional <em>and</em> :required.</dd>
