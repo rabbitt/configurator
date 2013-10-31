@@ -55,6 +55,7 @@ module Configurator
         when String then :string
         when Pathname then :path
         when URI then :uri
+        when Hash then :hash
         when Array then
           type.size <= 0 ? :array : [compute_type(type.first)]
         when Proc then
@@ -67,7 +68,6 @@ module Configurator
 
     def value=(v)
       return nil unless validate(v)
-      parent.instance_variable_set("@__#{name}".to_sym, nil)
       @value = v
     end
 
@@ -91,7 +91,9 @@ module Configurator
         method = e.message.match(/undefined method .([^']+)'.+/)[1]
         raise OptionInvalidCallableDefault, "#{path_name}: bad method/option name #{method.inspect} in callable default."
       rescue StandardError => e
-        raise OptionInvalidCallableDefault, "#{path_name}: error executing callable default: #{e.class.name}: #{e.message}"
+        excp = OptionInvalidCallableDefault.new "#{path_name}: error executing callable default: #{e.class.name}: #{e.message}"
+        excp.set_backtrace(e.backtrace)
+        raise excp
       end
 
       @caster.convert(value)
@@ -134,7 +136,10 @@ module Configurator
       # move all validation logic into those classes
       [].tap { |validations|
         validation   = (v = options.delete(:validate)).nil? ? true : v
+        validate_msg = options.delete(:validate_message)
+
         expectations = options.delete(:expect)
+        expect_msg   = options.delete(:expect_messgae)
 
         if !validation && expectations
           raise OptionInvalidArgument, "#{path_name}: can't expect something and disable validations at the same time!"
@@ -151,7 +156,11 @@ module Configurator
 
         validations << lambda { |_value|
           unless validation.call(_value)
-            raise ValidationError, "#{path_name}: #{_value.inspect} fails custom validation rule"
+            if validate_msg
+              raise ValidationError, "#{path_name}: #{_value.inspect} fails custom validation rule: #{validate_msg}"
+            else
+              raise ValidationError, "#{path_name}: #{_value.inspect} fails custom validation rule"
+            end
           end
           true
         } if validation.respond_to?(:call)
@@ -160,7 +169,11 @@ module Configurator
           if expectations.respond_to? :call
             validations << lambda { |_value|
               unless expectations.call(_value)
-                raise ValidationError, "#{path_name}: #{_value.inspect} fails custom expectation"
+                if expect_msg
+                  raise ValidationError, "#{path_name}: #{_value.inspect} fails custom expectation: #{expect_msg}"
+                else
+                  raise ValidationError, "#{path_name}: #{_value.inspect} fails custom expectation"
+                end
               end
               true
             }
@@ -177,29 +190,47 @@ module Configurator
     end
 
     def validate(_value)
-      _value = @caster.convert(_value || @value)
       return true if type == :any || validations.empty?
-      validations.all? { |validation| validation.call(_value) }
+
+      begin
+        # try on just the raw value first
+        validations.all? { |validation| validation.call(_value.freeze) }
+      rescue ValidationError => e
+        begin
+          # now try on the converted value
+          cast_value = @caster.convert(_value)
+          validations.all? { |validation| validation.call(cast_value) }
+        rescue ValidationError, CastError => e
+          raise ValidationError, "#{path_name}: Failed validation: #{e.message}"
+        end
+      end
     end
 
     def validate_type(_value, validation_type = nil)
       validation_type ||= type
 
       case validation_type
-        when Array;
+        when :any; true
+        when Array then
           return _value.is_a?(Array) if validation_type.empty?
           [*_value].flatten.all? { |v|
             validate_type(v, validation_type.first)
           }
-        when :any; true
-        when :array; _value.is_a?(Array)
-        when :boolean; _value.is_a?(FalseClass) || _value.is_a?(TrueClass)
-        when :float; ((Float(_value) rescue nil) == _value.to_f)
-        when :integer; ((Float(_value).to_i rescue nil) == _value.to_i)
-        when :path; _value.is_a? Pathname
-        when :string; _value.is_a? String
-        when :symbol; _value.is_a? Symbol
-        when :uri; !!(URI.parse(_value.to_s) rescue false)
+        when :scalar then
+          validate_type(_value, :integer) || validate_type(_value, :float) ||
+          validate_type(_value, :symbol) || validate_type(_value, :string)
+        when :boolean then
+          _value.is_a?(FalseClass) || _value.is_a?(TrueClass)
+        when :float then
+          ((Float(_value) rescue nil) == _value.to_f)
+        when :integer then
+          ((Float(_value).to_i rescue nil) == _value.to_i)
+        when :path then _value.is_a? Pathname
+        when :array then _value.is_a?(Array)
+        when :hash then _value.is_a?(Hash)
+        when :string then _value.is_a? String
+        when :symbol then _value.is_a? Symbol
+        when :uri then !!(URI.parse(_value) rescue false)
         else
           warn "unable to validate - no handler for type: #{type.inspect}"
           true # assume valid

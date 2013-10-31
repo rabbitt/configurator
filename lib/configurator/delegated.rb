@@ -57,10 +57,6 @@ module Configurator
     def name; @option.name; end
 
     def value; self; end
-    def value=(value)
-      @option.value = value
-      initialize(@option)
-    end
   end
 
   class DelegatedOption < SimpleDelegator

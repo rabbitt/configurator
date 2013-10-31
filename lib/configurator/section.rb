@@ -22,9 +22,9 @@ module Configurator
     attr_reader :table
 
     def initialize(name, parent = nil, options = {})
-      @table = {}
-      @parent  = parent
-      @name    = name
+      @table  = {}
+      @name   = name
+      @parent = parent
 
       load options
     end

@@ -84,7 +84,7 @@ module Configurator
         begin
           _cast(value);
         rescue StandardError => e
-          raise CastError, e.message
+          raise CastError.new(e.message).tap { |exc| exc.set_backtrace(e.backtrace) }
         end
       end
     end
@@ -99,9 +99,7 @@ module Configurator
       end
     end
 
-    class Array < Generic
-      def _cast(value) [*value] rescue [value]; end
-    end
+    class Scalar < Generic; end
 
     class String < Generic
       def _cast(value) value.to_s; end
@@ -120,11 +118,27 @@ module Configurator
     end
 
     class URI < Generic
-      def _cast(value) ::URI.parse(value.to_s); end
+      def _cast(value) ::URI.parse(value); end
     end
 
     class Path < Generic
       def _cast(value) ::Pathname.new(value); end
+    end
+
+    class Hash < Generic
+      def _cast(value)
+        return value if value.is_a?(::Hash)
+        case value
+          when Array then
+            return Hash[*value] if value.size % 2 == 0
+            raise CastError, "input array value has odd number of elements - unable to convert to Hash"
+          else { value => value }
+        end
+      end
+    end
+
+    class Array < Generic
+      def _cast(value) [*value] rescue [value]; end
     end
 
     class Boolean < Generic
