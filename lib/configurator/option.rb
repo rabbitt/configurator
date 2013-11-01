@@ -145,18 +145,38 @@ module Configurator
         expectations = options.delete(:expect)
         expect_msg   = options.delete(:expect_messgae)
 
-        if !validation && expectations
-          raise OptionInvalidArgument, "#{path_name}: can't expect something and disable validations at the same time!"
+        type_validator     = options.delete(:type_validator)
+        type_validator_msg = options.delete(:type_validation_message)
+
+        if !validation
+          if expectations
+            raise OptionInvalidArgument, "#{path_name}: can't disable validations and set an expectation at the same time!"
+          elsif type_validator
+            raise OptionInvalidArgument, "#{path_name}: can't disable validations and assign a type validator at the same time!"
+          end
         end
 
         return [] unless validation
 
-        validations << lambda { |_value|
-          unless validate_type(_value)
-            raise ValidationError, "#{path_name}: #{_value.inspect} fails to validate as #{type.inspect}"
-          end
-          true
-        }
+        if type_validator
+          validations << lambda { |_value|
+            unless type_validator.call(_value)
+              if type_validator_msg
+                raise ValidationError, "#{path_name}: #{_value.inspect} fails to validate as custom type: #{type_validator_msg}"
+              else
+                raise ValidationError, "#{path_name}: #{_value.inspect} fails to validate as custom type."
+              end
+            end
+            true
+          }
+        else
+          validations << lambda { |_value|
+            unless validate_type(_value)
+              raise ValidationError, "#{path_name}: #{_value.inspect} fails to validate as #{type.inspect}"
+            end
+            true
+          }
+        end
 
         validations << lambda { |_value|
           unless validation.call(_value)
