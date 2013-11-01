@@ -214,7 +214,7 @@ module Configurator
     end
 
     def validate(_value)
-      return true if type == :any || validations.empty?
+      return true if type == :any && validations.empty?
 
       begin
         # try on just the raw value first
