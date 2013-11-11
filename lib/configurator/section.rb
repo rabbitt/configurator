@@ -68,6 +68,10 @@ module Configurator
       }
     end
 
+    def inspect
+      "<Section @name=#{name} @parent=#{parent.nil? ? 'nil' : parent.path_name} @options=#{@table.values.inspect}>"
+    end
+
     def config() self; end
     alias :value :config
 

@@ -48,6 +48,11 @@ module Configurator
       }
     end
 
+    def inspect
+      _type = type.is_a?(Array) ? "Collection::#{type.first.to_s.capitalize}" : type.to_s.capitalize
+      "<Option::#{_type} @name=#{name} @required=#{required.inspect} @default=#{default.inspect} @value=#{value.inspect}>"
+    end
+
     def compute_type(type)
       case type
         when UNDEFINED_OPTION then :any
