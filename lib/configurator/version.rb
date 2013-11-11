@@ -17,5 +17,5 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 =end
 
 module Configurator
-  VERSION = "1.2.2"
+  VERSION = "1.2.3"
 end
