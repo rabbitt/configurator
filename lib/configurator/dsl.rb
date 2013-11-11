@@ -82,7 +82,6 @@ module Configurator
       end
 
       def reload!
-        ap @env
         return false unless config_path
         return false unless @env
         config.load loader.reload!(@env)
