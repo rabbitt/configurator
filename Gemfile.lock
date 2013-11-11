@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    configurator (1.1.0)
+    rabbitt-configurator (1.2.2)
 
 GEM
   remote: https://rubygems.org/
@@ -22,6 +22,6 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 1.3)
-  configurator!
+  rabbitt-configurator!
   rake
   rspec
