@@ -23,7 +23,7 @@ $:.unshift(lib) unless $:.include?(lib)
 require 'configurator/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "configurator"
+  spec.name          = "rabbitt-configurator"
   spec.version       = Configurator::VERSION
   spec.authors       = ["Carl P. Corliss"]
   spec.email         = ["rabbitt@gmail.com"]
