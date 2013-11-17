@@ -32,7 +32,7 @@ module Configurator
       @parent   = parent
       @guarding = false
 
-      @default = (options.delete(:default) || UNDEFINED_OPTION).freeze
+      @default = ((default = options.delete(:default)).nil? ? UNDEFINED_OPTION : default).freeze
       @type    = (type = options.delete(:type)).nil? ? compute_type(@default) : type
       @caster  = (cast = options.delete(:cast)).nil? ? Cast::Director[@type] : Cast::Director[cast]
 
