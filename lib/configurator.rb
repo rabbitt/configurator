@@ -27,4 +27,5 @@ module Configurator
   autoload :Option,      'configurator/option'
   autoload :Cast,        'configurator/cast'
   autoload :VERSION,     'configurator/version'
+  autoload :Type,        'configurator/type'
 end

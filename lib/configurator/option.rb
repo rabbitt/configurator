@@ -54,25 +54,7 @@ module Configurator
     end
 
     def compute_type(type)
-      case type
-        when UNDEFINED_OPTION then :any
-        when OptionValue then type.type
-        when Bignum, Fixnum then :integer
-        when Float then :float
-        when Symbol then :symbol
-        when FalseClass, TrueClass, /(true|false|yes|no|enabled?|disabled?|on|off)/i then :boolean
-        when String then :string
-        when Pathname then :path
-        when URI then :uri
-        when Hash then :hash
-        when Array then
-          type.size <= 0 ? :array : [compute_type(type.first)]
-        when Proc then
-          with_loop_guard do
-            compute_type(type.call)
-          end rescue :any
-        else :any
-      end
+      Type.compute(type)
     end
 
     def value=(v)
@@ -265,8 +247,12 @@ module Configurator
         when :symbol then _value.is_a? Symbol
         when :uri then !!(URI.parse(_value) rescue false)
         else
-          warn "unable to validate - no handler for type: #{type.inspect}"
-          true # assume valid
+          if Type.types.include?(validation_type) && Type.types[validation_type].validator.respond_to?(:call)
+            Type.types[validation_type].validator.call(_value)
+          else
+            warn "unable to validate - no handler for type: #{type.inspect}"
+            true # assume valid
+          end
       end
     end
 
