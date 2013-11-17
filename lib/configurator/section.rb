@@ -18,6 +18,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 module Configurator
   class Section
+    include Enumerable
+
     attr_accessor :name, :parent
     attr_reader :table
 
@@ -51,11 +53,7 @@ module Configurator
     end
 
     def each(&block)
-      @table.each &block
-    end
-
-    def inject(*args, &block)
-      @table.inject(*args, &block)
+      @table.each(&block)
     end
 
     def to_h
@@ -80,11 +78,11 @@ module Configurator
         warn "#{path_name}: invalid load data for section (#{data.inspect}) - skipping..."
       else
         data.each { |key,value|
-          if not @table.key? key.to_sym
+          unless @table.key? key.to_sym
             warn "#{path_name}: unable to load data for unknown key #{key.inspect} -> #{value.inspect}"
             next
           end
-          @table[key.to_sym].value = value
+          self[key] = value
         }
       end
     end
